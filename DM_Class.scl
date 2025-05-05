@@ -411,6 +411,33 @@ BEGIN
 	        
 	    END_IF;
 	    
+	    CASE #statControlMode OF
+	        #MODE_REMOTE:
+	            #oStatus := #STATUS_OFF;
+	        #MODE_LOCAL:
+	            IF #statTurnOnConfirm THEN
+	                #oStatus := #STATUS_ON;
+	            ELSIF #statTurnOffConfirm THEN
+	                #oStatus := #STATUS_OFF;
+	            ELSE
+	                #oStatus := #STATUS_STARTING;
+	            END_IF;
+	        #MODE_MANUAL, #MODE_AUTO:
+	            IF #statSwitchControl AND #statSwitchEnable THEN
+	                IF #statControl AND #statTurnOnConfirm AND NOT #statTurnOffConfirm THEN
+	                    #oStatus := #STATUS_ON;
+	                ELSIF NOT #statControl AND #statTurnOffConfirm AND NOT #statTurnOnConfirm THEN
+	                    #oStatus := #STATUS_OFF;
+	                ELSE
+	                    #oStatus := #STATUS_STARTING;
+	                END_IF;
+	            ELSE
+	                #oStatus := #STATUS_OFF;
+	            END_IF;
+	        ELSE
+	            #oStatus := #STATUS_FAULT;
+	    END_CASE;
+	    
 	END_REGION ;
 	
 	
