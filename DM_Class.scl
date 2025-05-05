@@ -78,6 +78,18 @@ VERSION : 0.1
       trigGlobalReset {InstructionName := 'R_TRIG'; LibVersion := '1.0'; ExternalAccessible := 'False'; ExternalVisible := 'False'; ExternalWritable := 'False'; S7_SetPoint := 'False'} : R_TRIG;
    END_VAR
 
+   VAR CONSTANT 
+      MODE_REMOTE : Int := 1;
+      MODE_LOCAL : Int := 2;
+      MODE_MANUAL : Int := 4;
+      MODE_AUTO : Int := 8;
+      STATUS_FAULT : Int := 1;
+      STATUS_OFF : Int := 2;
+      STATUS_STARTING : Int := 4;
+      STATUS_ON : Int := 8;
+      STATUS_STOPPING : Int := 16;
+   END_VAR
+
 
 BEGIN
 	REGION Activation object - condition to execute function
@@ -170,19 +182,19 @@ BEGIN
 	    
 	    IF #statRemote THEN
 	        
-	        #statControlMode := 1;
+	        #statControlMode := #MODE_REMOTE;
 	        
 	    ELSIF #statLocal THEN
 	        
-	        #statControlMode := 2;
+	        #statControlMode := #MODE_LOCAL;
 	        
 	    ELSIF NOT #statManAuto AND NOT #statLockAutoMan THEN
 	        
-	        #statControlMode := 4;
+	        #statControlMode := #MODE_MANUAL;
 	        
 	    ELSIF #statManAuto AND NOT #statLockAutoMan THEN
 	        
-	        #statControlMode := 8;
+	        #statControlMode := #MODE_AUTO;
 	        
 	    END_IF;
 	
@@ -216,8 +228,8 @@ BEGIN
 	    #statAlarmStart :=
 	    #statSwitchControl AND //is switch controling on
 	    #statSwitchEnable AND //is objects output is eneble to turn on
-	    #statControlMode<>2 AND //in local mode there is no alarm
-	    #statControlMode<>1 AND //in remote mode there is no alarm
+	    #statControlMode<>#MODE_LOCAL AND //in local mode there is no alarm
+	    #statControlMode<>#MODE_REMOTE AND //in remote mode there is no alarm
 	    (
 	    (#statControl XOR #statTurnOnConfirm) OR //xor  0110 - if A and B have different state then =1
 	    (NOT #statControl XOR #statTurnOffConfirm) OR
@@ -262,18 +274,18 @@ BEGIN
 	
 	REGION Command locks
 	    
-	    IF #statControlMode = 8 AND #statLockAutoMan THEN
+	    IF #statControlMode = #MODE_AUTO AND #statLockAutoMan THEN
 	        
 	        #statManAuto := TRUE;
 	        
-	    ELSIF #statControlMode = 4 AND #statLockAutoMan THEN
+	    ELSIF #statControlMode = #MODE_MANUAL AND #statLockAutoMan THEN
 	        
 	        #statManAuto := FALSE;
 	        
 	    END_IF;
 	    
 	    // Writing states from Local to Manual when object when switching Local to Manual
-	    IF #statControlMode = 2 THEN
+	    IF #statControlMode = #MODE_LOCAL THEN
 	        
 	        #statManAuto := FALSE;
 	        
@@ -291,7 +303,7 @@ BEGIN
 	    
 	    // Writing states from Auto to Manual when object when switching Auto to Manual
 	    // Przypadek gdy ktos z wlaczonym automatycznie urz. przechodzi na tryb zdalny-reczny
-	    IF #statControlMode = 8 THEN
+	    IF #statControlMode = #MODE_AUTO THEN
 	        
 	        #statManTurnOn := #statTurnOn;
 	        #statManDirection := #statDirection;
@@ -316,8 +328,8 @@ BEGIN
 	    #statSwitchEnable AND
 	    NOT #statInterlock AND
 	    NOT #statFault AND
-	    ((#statControlMode = 8 AND #statTmrOnOff) OR
-	    (#statControlMode = 4 AND #statManTurnOn));
+	    ((#statControlMode = #MODE_AUTO AND #statTmrOnOff) OR
+	    (#statControlMode = #MODE_MANUAL AND #statManTurnOn));
 	    
 	END_REGION
 	
@@ -325,8 +337,8 @@ BEGIN
 	    
 	    #oControlDirection :=
 	    #statSwitchEnable AND
-	    ((#statControlMode = 8 AND #statDirection) OR
-	    (#statControlMode = 4 AND #statManDirection));
+	    ((#statControlMode = #MODE_AUTO AND #statDirection) OR
+	    (#statControlMode = #MODE_MANUAL AND #statManDirection));
 	    
 	END_REGION
 	
@@ -338,45 +350,45 @@ BEGIN
 	
 	REGION Device status code
 	    IF #statFault THEN
-	        #oStatus := 1;
+	        #oStatus := #STATUS_FAULT;
 	        
-	    ELSIF #statControlMode = 1 THEN
-	        #oStatus := 2;
+	    ELSIF #statControlMode = #MODE_REMOTE THEN
+	        #oStatus := #STATUS_OFF;
 	        
-	    ELSIF #statControlMode = 2 THEN
+	    ELSIF #statControlMode = #MODE_LOCAL THEN
 	        
 	        IF #statTurnOnConfirm THEN
-	            #oStatus := 8;
+	            #oStatus := #STATUS_ON;
 	            
 	        ELSIF #statTurnOffConfirm THEN
-	            #oStatus := 2;
+	            #oStatus := #STATUS_OFF;
 	            
 	        ELSIF #statControl THEN
-	            #oStatus := 4;
+	            #oStatus := #STATUS_STARTING;
 	            
 	        ELSIF NOT #statControl THEN
-	            #oStatus := 16;
+	            #oStatus := #STATUS_STOPPING;
 	        END_IF;
 	        
-	    ELSIF #statControlMode > 2 THEN
+	    ELSIF #statControlMode > #MODE_LOCAL THEN
 	        
 	        IF #statSwitchControl AND #statSwitchEnable THEN
 	            
 	            IF #statControl AND NOT #statTurnOffConfirm AND #statTurnOnConfirm THEN
 	                
-	                #oStatus := 8;
+	                #oStatus := #STATUS_ON;
 	                
 	            ELSIF NOT #statControl AND NOT #statTurnOnConfirm AND #statTurnOffConfirm THEN
 	                
-	                #oStatus := 2;
+	                #oStatus := #STATUS_OFF;
 	                
 	            ELSIF #statControl THEN
 	                
-	                #oStatus := 4;
+	                #oStatus := #STATUS_STARTING;
 	                
 	            ELSIF NOT #statControl THEN
 	                
-	                #oStatus := 16;
+	                #oStatus := #STATUS_STOPPING;
 	                
 	            END_IF;
 	            
@@ -384,11 +396,11 @@ BEGIN
 	            
 	            IF #statControl THEN
 	                
-	                #oStatus := 8;
+	                #oStatus := #STATUS_ON;
 	                
 	            ELSIF NOT #statControl THEN
 	                
-	                #oStatus := 2;
+	                #oStatus := #STATUS_OFF;
 	                
 	            END_IF;
 	            
