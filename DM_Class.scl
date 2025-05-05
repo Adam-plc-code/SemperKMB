@@ -349,94 +349,108 @@ BEGIN
 	END_REGION ;
 	
 	REGION Device status code
+	    // IF #statFault THEN
+	    //     #oStatus := #STATUS_FAULT;
+	        
+	    // ELSIF #statControlMode = #MODE_REMOTE THEN
+	    //     #oStatus := #STATUS_OFF;
+	        
+	    // ELSIF #statControlMode = #MODE_LOCAL THEN
+	        
+	    //     IF #statTurnOnConfirm THEN
+	    //         #oStatus := #STATUS_ON;
+	            
+	    //     ELSIF #statTurnOffConfirm THEN
+	    //         #oStatus := #STATUS_OFF;
+	            
+	    //     ELSIF #statControl THEN
+	    //         #oStatus := #STATUS_STARTING;
+	            
+	    //     ELSIF NOT #statControl THEN
+	    //         #oStatus := #STATUS_STOPPING;
+	    //     END_IF;
+	        
+	    // ELSIF #statControlMode > #MODE_LOCAL THEN
+	        
+	    //     IF #statSwitchControl AND #statSwitchEnable THEN
+	            
+	    //         IF #statControl AND NOT #statTurnOffConfirm AND #statTurnOnConfirm THEN
+	                
+	    //             #oStatus := #STATUS_ON;
+	                
+	    //         ELSIF NOT #statControl AND NOT #statTurnOnConfirm AND #statTurnOffConfirm THEN
+	                
+	    //             #oStatus := #STATUS_OFF;
+	                
+	    //         ELSIF #statControl THEN
+	                
+	    //             #oStatus := #STATUS_STARTING;
+	                
+	    //         ELSIF NOT #statControl THEN
+	                
+	    //             #oStatus := #STATUS_STOPPING;
+	                
+	    //         END_IF;
+	            
+	    //     ELSIF NOT #statSwitchControl OR NOT #statSwitchEnable THEN //if no output enable or switch check then
+	            
+	    //         IF #statControl THEN
+	                
+	    //             #oStatus := #STATUS_ON;
+	                
+	    //         ELSIF NOT #statControl THEN
+	                
+	    //             #oStatus := #STATUS_OFF;
+	                
+	    //         END_IF;
+	            
+	    //     END_IF;
+	        
+	    // ELSE
+	    //     #oStatus := 0;
+	        
+	    // END_IF;
+	    
 	    IF #statFault THEN
 	        #oStatus := #STATUS_FAULT;
-	        
-	    ELSIF #statControlMode = #MODE_REMOTE THEN
-	        #oStatus := #STATUS_OFF;
-	        
-	    ELSIF #statControlMode = #MODE_LOCAL THEN
-	        
-	        IF #statTurnOnConfirm THEN
-	            #oStatus := #STATUS_ON;
-	            
-	        ELSIF #statTurnOffConfirm THEN
-	            #oStatus := #STATUS_OFF;
-	            
-	        ELSIF #statControl THEN
-	            #oStatus := #STATUS_STARTING;
-	            
-	        ELSIF NOT #statControl THEN
-	            #oStatus := #STATUS_STOPPING;
-	        END_IF;
-	        
-	    ELSIF #statControlMode > #MODE_LOCAL THEN
-	        
-	        IF #statSwitchControl AND #statSwitchEnable THEN
-	            
-	            IF #statControl AND NOT #statTurnOffConfirm AND #statTurnOnConfirm THEN
-	                
-	                #oStatus := #STATUS_ON;
-	                
-	            ELSIF NOT #statControl AND NOT #statTurnOnConfirm AND #statTurnOffConfirm THEN
-	                
-	                #oStatus := #STATUS_OFF;
-	                
-	            ELSIF #statControl THEN
-	                
-	                #oStatus := #STATUS_STARTING;
-	                
-	            ELSIF NOT #statControl THEN
-	                
-	                #oStatus := #STATUS_STOPPING;
-	                
-	            END_IF;
-	            
-	        ELSIF NOT #statSwitchControl OR NOT #statSwitchEnable THEN //if no output enable or switch check then
-	            
-	            IF #statControl THEN
-	                
-	                #oStatus := #STATUS_ON;
-	                
-	            ELSIF NOT #statControl THEN
-	                
-	                #oStatus := #STATUS_OFF;
-	                
-	            END_IF;
-	            
-	        END_IF;
-	        
 	    ELSE
-	        #oStatus := 0;
-	        
-	    END_IF;
 	    
-	    CASE #statControlMode OF
-	        #MODE_REMOTE:
-	            #oStatus := #STATUS_OFF;
-	        #MODE_LOCAL:
-	            IF #statTurnOnConfirm THEN
-	                #oStatus := #STATUS_ON;
-	            ELSIF #statTurnOffConfirm THEN
+	        CASE #statControlMode OF
+	            #MODE_REMOTE:
 	                #oStatus := #STATUS_OFF;
-	            ELSE
-	                #oStatus := #STATUS_STARTING;
-	            END_IF;
-	        #MODE_MANUAL, #MODE_AUTO:
-	            IF #statSwitchControl AND #statSwitchEnable THEN
-	                IF #statControl AND #statTurnOnConfirm AND NOT #statTurnOffConfirm THEN
+	            #MODE_LOCAL:
+	                IF #statTurnOnConfirm THEN
 	                    #oStatus := #STATUS_ON;
-	                ELSIF NOT #statControl AND #statTurnOffConfirm AND NOT #statTurnOnConfirm THEN
+	                ELSIF #statTurnOffConfirm THEN
 	                    #oStatus := #STATUS_OFF;
-	                ELSE
+	                ELSIF #statControl THEN
 	                    #oStatus := #STATUS_STARTING;
+	                ELSIF NOT #statControl THEN
+	                    #oStatus := #STATUS_STOPPING;
+	                END_IF;
+	            #MODE_MANUAL, #MODE_AUTO:
+	                IF #statSwitchControl AND #statSwitchEnable THEN
+	                    IF #statControl AND #statTurnOnConfirm AND NOT #statTurnOffConfirm THEN
+	                        #oStatus := #STATUS_ON;
+	                    ELSIF NOT #statControl AND #statTurnOffConfirm AND NOT #statTurnOnConfirm THEN
+	                        #oStatus := #STATUS_OFF;
+	                    ELSIF #statControl THEN
+	                        #oStatus := #STATUS_STARTING;
+	                    ELSIF NOT #statControl THEN
+	                        #oStatus := #STATUS_STOPPING;
+	                    END_IF;
+	                ELSE
+	                    IF #statControl THEN
+	                        #oStatus := #STATUS_ON;
+	                    ELSIF NOT #statControl THEN
+	                        #oStatus := #STATUS_OFF;
+	                    END_IF;
 	                END_IF;
 	            ELSE
-	                #oStatus := #STATUS_OFF;
-	            END_IF;
-	        ELSE
-	            #oStatus := #STATUS_FAULT;
-	    END_CASE;
+	                #oStatus := #STATUS_FAULT;
+	        END_CASE;
+	        
+	    END_IF;
 	    
 	END_REGION ;
 	
