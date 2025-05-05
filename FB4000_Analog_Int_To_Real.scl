@@ -1,0 +1,117 @@
+﻿FUNCTION_BLOCK "FB4000_Analog_Int_To_Real"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      i_value : Int;
+      i_scaling_max : Int := 1;
+      i_scaling_min : Int;
+      i_rGL : Real := 0.0;
+      i_rGH : Real := 1.0;
+   END_VAR
+   VAR_INPUT RETAIN
+      i_HH_limit : Real;
+      i_H_limit : Real;
+      i_L_limit : Real;
+      i_LL_limit : Real;
+      i_HH_limit_offset : Int;
+      i_LL_limit_offset : Int;
+      i_alarm_block : Byte;
+   END_VAR
+
+   VAR_OUTPUT 
+      o_status : Int;
+      o_value : Real;
+      o_alarm : "Alarm_Analog";
+   END_VAR
+
+   VAR 
+      s_alarm_block : Struct
+         HH : Bool;
+         H : Bool;
+         L : Bool;
+         LL : Bool;
+      END_STRUCT;
+      s_real : Real;
+      s_HH_start { S7_SetPoint := 'True'} : Bool;
+      s_LL_start : Bool;
+      s_HH_offset : Time;
+      s_LL_offset : Time;
+      HH_timer {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      LL_timer {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+   END_VAR
+
+   VAR_TEMP 
+      t_real : Real;
+      t_alarms : "Alarm_Analog";
+   END_VAR
+
+
+BEGIN
+	
+	
+	            REGION Function
+	                REGION input conversion
+	                    REGION Scaling value 
+	                        #t_real := NORM_X(MIN := #i_rGL, VALUE := #i_value, MAX := #i_rGH);
+	                        #s_real := SCALE_X(MIN := #i_scaling_min, VALUE := #t_real, MAX := #i_scaling_max);
+	                    END_REGION
+	
+	                    #s_HH_offset := 1000*INT_TO_TIME(#i_HH_limit_offset);
+	                    #s_LL_offset := 1000*INT_TO_TIME(#i_LL_limit_offset);
+	                    #s_alarm_block.HH := #i_alarm_block.%X0;
+	                    #s_alarm_block.H := #i_alarm_block.%X1;
+	                    #s_alarm_block.L := #i_alarm_block.%X2;
+	                    #s_alarm_block.LL := #i_alarm_block.%X3;
+	                END_REGION
+	                
+	                
+	                REGION Status
+	                    REGION HH limit
+	                        
+	                        #s_HH_start := NOT #s_alarm_block.HH AND (#s_real >= #i_HH_limit);
+	                        
+	                        #HH_timer(IN := #s_HH_start,
+	                                  PT := #s_HH_offset);
+	                        
+	                    END_REGION
+	                    REGION LL limit
+	                        
+	                        #s_LL_start := NOT #s_alarm_block.LL AND (#s_real <= #i_LL_limit);
+	                        
+	                        #LL_timer(IN := #s_LL_start,
+	                                  PT := #s_LL_offset);
+	                        
+	                    END_REGION
+	                    
+	                    REGION Status
+	                        
+	                        IF #s_HH_start AND #HH_timer.Q AND NOT #s_alarm_block.HH THEN //Awaria HH
+	                            #o_status := 2;
+	                            #t_alarms.Alarm_HH:= true;
+	                        ELSIF #s_LL_start AND #LL_timer.Q AND NOT #s_alarm_block.LL THEN //Awaria LL
+	                            #o_status := 32;
+	                            #t_alarms.Alarm_LL := true;
+	                        ELSIF #s_real >= #i_H_limit AND NOT #s_alarm_block.H THEN //Ostrzezenie H
+	                            #o_status := 4;
+	                            #t_alarms.Alarm_H := true;
+	                        ELSIF #s_real <= #i_L_limit AND NOT #s_alarm_block.L THEN //Ostrzezenie L
+	                            #o_status := 16;
+	                            #t_alarms.Alarm_L := true;
+	                        ELSE //Stan normalnej pracy
+	                            #o_status := 8;
+	                        END_IF;
+	                        
+	                    END_REGION
+	                    REGION Output
+	                        #o_value := #s_real;
+	                        #o_alarm := #t_alarms;
+	                    END_REGION
+	                    
+	                END_REGION
+	            END_REGION
+	
+	
+	    
+	
+END_FUNCTION_BLOCK
+
